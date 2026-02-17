@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>For Me: Energy Tap</title>
+    <style>
+        :root {
+            --brand-red: #e30613;
+            --brand-pink: #f8cbd0;
+        }
+        body {
+            margin: 0; padding: 0; overflow: hidden;
+            background: #fff5f6; font-family: 'Helvetica Neue', sans-serif;
+            touch-action: manipulation;
+        }
+        #game-container {
+            position: relative; width: 100vw; height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #ui {
+            position: absolute; top: 40px; width: 100%;
+            display: flex; justify-content: space-around;
+            font-weight: bold; color: var(--brand-red); z-index: 10;
+        }
+        /* Pudeli konteiner */
+        #bottle-wrapper {
+            position: relative; width: 180px; height: 400px;
+        }
+        /* Pudeli täituv sisu */
+        #energy-fill {
+            position: absolute; bottom: 25px; left: 35px;
+            width: 110px; height: 0%;
+            background: linear-gradient(to top, #f3a6b1, #e30613);
+            border-radius: 0 0 20px 20px;
+            transition: height 0.3s ease;
+            z-index: 1;
+        }
+        svg#bottle-svg {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            z-index: 2; pointer-events: none;
+        }
+        .energy-bubble {
+            position: absolute; width: 50px; height: 50px;
+            border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            animation: pulse 1.5s infinite;
+            z-index: 5;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.3); opacity: 0.5; }
+        }
+        #overlay {
+            position: absolute; inset: 0; background: white;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; z-index: 100; text-align: center;
+        }
+        .btn {
+            padding: 15px 50px; background: var(--brand-red);
+            color: white; border: none; border-radius: 30px;
+            font-size: 20px; font-weight: bold; cursor: pointer;
+        }
+        input {
+            padding: 12px; border: 2px solid var(--brand-pink);
+            border-radius: 20px; margin-bottom: 20px; text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="ui">
+        <div id="name-tag"></div>
+        <div>SKOOR: <span id="score">0</span></div>
+    </div>
+
+    <div id="bottle-wrapper">
+        <div id="energy-fill"></div>
+        <svg id="bottle-svg" viewBox="0 0 200 500">
+            <rect x="75" y="10" width="50" height="35" rx="5" fill="#fff" stroke="#ddd" />
+            <path d="M75 45 L75 80 Q75 110 30 150 L30 450 Q30 480 60 480 L140 480 Q170 480 170 450 L170 150 Q125 110 125 80 L125 45 Z" 
+                  fill="none" stroke="#e0e0e0" stroke-width="2" />
+            <rect x="30" y="200" width="140" height="180" fill="white" />
+            <text x="100" y="240" text-anchor="middle" font-size="12" font-weight="bold" fill="#333">Good energy</text>
+            <text x="100" y="280" text-anchor="middle" font-size="32" font-weight="900" fill="#1a2b56">For Me</text>
+            <text x="100" y="310" text-anchor="middle" font-size="14" fill="#e30613">pomegranate</text>
+            <circle cx="150" cy="330" r="25" fill="#f8cbd0" opacity="0.8" />
+            <circle cx="50" cy="350" r="20" fill="#e30613" opacity="0.6" />
+        </svg>
+    </div>
+
+    <div id="overlay">
+        <h1 style="color: var(--brand-red);">ENERGY TAP</h1>
+        <p>Täida pudel energiaga!</p>
+        <input type="text" id="player-name" placeholder="Sinu nimi" maxlength="10">
+        <button class="btn" onclick="startGame()">ALUSTA</button>
+    </div>
+</div>
+
+<script>
+    let score = 0;
+    let energy = 0;
+    let gameActive = false;
+    const fill = document.getElementById('energy-fill');
+    const scoreEl = document.getElementById('score');
+    const overlay = document.getElementById('overlay');
+
+    function startGame() {
+        const name = document.getElementById('player-name').value || "Sõber";
+        document.getElementById('name-tag').innerText = name.toUpperCase();
+        overlay.style.display = 'none';
+        score = 0;
+        energy = 0;
+        gameActive = true;
+        updateUI();
+        gameLoop();
+    }
+
+    function createEnergy() {
+        if (!gameActive) return;
+
+        const bubble = document.createElement('div');
+        bubble.className = 'energy-bubble';
+        
+        // Juhuslik värv brändi paletist
+        const colors = ['#e30613', '#f8cbd0', '#1a2b56', '#ff9a9e'];
+        bubble.style.background = colors[Math.floor(Math.random() * colors.length)];
+        
+        // Juhuslik asukoht (mitte pudeli peal)
+        let x, y;
+        do {
+            x = Math.random() * (window.innerWidth - 60);
+            y = Math.random() * (window.innerHeight - 60);
+        } while (x > window.innerWidth/2 - 100 && x < window.innerWidth/2 + 100);
+
+        bubble.style.left = x + 'px';
+        bubble.style.top = y + 'px';
+
+        bubble.onclick = () => {
+            if (!gameActive) return;
+            score += 10;
+            energy += 8;
+            if (energy > 100) energy = 100;
+            bubble.remove();
+            updateUI();
+            checkWin();
+        };
+
+        document.getElementById('game-container').appendChild(bubble);
+
+        // Mull kaob ise 2 sekundi pärast
+        setTimeout(() => {
+            if (bubble.parentElement) {
+                bubble.remove();
+                energy -= 5;
+                if (energy < 0) energy = 0;
+                updateUI();
+                if (energy === 0 && score > 50) endGame("Energia sai otsa!");
+            }
+        }, 2000);
+    }
+
+    function updateUI() {
+        scoreEl.innerText = score;
+        fill.style.height = energy + '%';
+    }
+
+    function checkWin() {
+        if (energy >= 100) {
+            endGame("TUBLI! Pudel on täis!");
+        }
+    }
+
+    function gameLoop() {
+        if (!gameActive) return;
+        createEnergy();
+        setTimeout(gameLoop, Math.max(400, 1000 - score/10));
+    }
+
+    function endGame(msg) {
+        gameActive = false;
+        overlay.style.display = 'flex';
+        overlay.innerHTML = `
+            <h1 style="color: var(--brand-red);">${msg}</h1>
+            <p>Sinu skoor: ${score}</p>
+            <button class="btn" onclick="location.reload()">MÄNGI UUESTI</button>
+        `;
+    }
+</script>
+</body>
+</html>
