@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>For Me Energy Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #fdf2f4; /* Õrn roosakas taust nagu pudelil */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 600px;
+            margin: 0 auto;
+            background: linear-gradient(to bottom, #ffffff, #ffe9ec);
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        #start-screen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.9);
+            z-index: 10;
+            text-align: center;
+            padding: 20px;
+        }
+        input {
+            padding: 10px;
+            font-size: 18px;
+            border: 2px solid #e30613;
+            border-radius: 25px;
+            margin-bottom: 20px;
+            outline: none;
+        }
+        button {
+            padding: 15px 40px;
+            font-size: 20px;
+            background: #e30613;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #pudel {
+            position: absolute;
+            bottom: 20px;
+            width: 60px;
+            height: auto;
+            transition: transform 0.1s ease-out;
+            cursor: grab;
+            z-index: 5;
+        }
+        .item {
+            position: absolute;
+            font-weight: bold;
+            font-size: 24px;
+            user-select: none;
+        }
+        #score-board {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            color: #333;
+            font-weight: bold;
+            z-index: 8;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="score-board">Mängija: <span id="player-display">-</span> | Punktid: <span id="score">0</span></div>
+    
+    <div id="start-screen">
+        <h1 style="color: #333;">Good Energy <br><span style="color: #e30613;">For Me</span></h1>
+        <p>Püüa vitamiine ja väldi väsimust!</p>
+        <input type="text" id="player-name" placeholder="Sinu nimi..." maxlength="15">
+        <button onclick="startGame()">ALUSTA</button>
+    </div>
+
+    <div id="pudel">
+        <svg viewBox="0 0 100 250">
+            <rect x="25" y="0" width="50" height="20" rx="5" fill="#eee" stroke="#ccc" />
+            <path d="M20 30 Q20 20 30 20 L70 20 Q80 20 80 30 L80 220 Q80 240 70 240 L30 240 Q20 240 20 220 Z" fill="rgba(255,192,203,0.3)" stroke="#e30613" stroke-width="2" />
+            <text x="50" y="130" text-anchor="middle" fill="#e30613" font-size="14" font-weight="bold">For Me</text>
+        </svg>
+    </div>
+</div>
+
+<script>
+    const container = document.getElementById('game-container');
+    const pudel = document.getElementById('pudel');
+    const scoreElement = document.getElementById('score');
+    const startScreen = document.getElementById('start-screen');
+    const playerDisplay = document.getElementById('player-display');
+    const nameInput = document.getElementById('player-name');
+
+    let score = 0;
+    let gameActive = false;
+    let containerWidth = container.offsetWidth;
+    let pudelWidth = 60;
+    let currentX = containerWidth / 2 - pudelWidth / 2;
+
+    // Liikumine
+    const movePudel = (x) => {
+        if (!gameActive) return;
+        let rect = container.getBoundingClientRect();
+        let newX = x - rect.left - (pudelWidth / 2);
+        
+        // Piirid
+        if (newX < 0) newX = 0;
+        if (newX > containerWidth - pudelWidth) newX = containerWidth - pudelWidth;
+        
+        currentX = newX;
+        pudel.style.left = currentX + 'px';
+    };
+
+    // Event listenerid hiirele ja puutele
+    container.addEventListener('mousemove', (e) => movePudel(e.clientX));
+    container.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        movePudel(e.touches[0].clientX);
+    }, { passive: false });
+
+    function startGame() {
+        const nimi = nameInput.value.trim() || "Külaline";
+        playerDisplay.innerText = nimi;
+        startScreen.style.display = 'none';
+        score = 0;
+        scoreElement.innerText = score;
+        gameActive = true;
+        spawnItems();
+    }
+
+    function spawnItems() {
+        if (!gameActive) return;
+
+        const items = [
+            { txt: 'B', color: '#ff69b4', points: 10 },
+            { txt: 'E', color: '#ffa500', points: 10 },
+            { txt: 'Mg', color: '#4b0082', points: 20 },
+            { txt: 'Zn', color: '#00ced1', points: 20 },
+            { txt: '☁️', color: '#888', points: -50 } // Takistus
+        ];
+
+        const itemData = items[Math.floor(Math.random() * items.length)];
+        const item = document.createElement('div');
+        item.className = 'item';
+        item.innerText = itemData.txt;
+        item.style.color = itemData.color;
+        item.style.left = Math.random() * (containerWidth - 30) + 'px';
+        item.style.top = '-50px';
+        container.appendChild(item);
+
+        let fallSpeed = 3 + Math.random() * 3;
+        let rotation = 0;
+
+        const fallInterval = setInterval(() => {
+            if (!gameActive) {
+                clearInterval(fallInterval);
+                item.remove();
+                return;
+            }
+
+            let top = parseFloat(item.style.top);
+            item.style.top = (top + fallSpeed) + 'px';
+            rotation += 2;
+            item.style.transform = `rotate(${rotation}deg)`;
+
+            // Kokkupõrke tuvastamine
+            let pudelRect = pudel.getBoundingClientRect();
+            let itemRect = item.getBoundingClientRect();
+
+            if (
+                itemRect.bottom > pudelRect.top &&
+                itemRect.top < pudelRect.bottom &&
+                itemRect.right > pudelRect.left &&
+                itemRect.left < pudelRect.right
+            ) {
+                score += itemData.points;
+                scoreElement.innerText = score;
+                clearInterval(fallInterval);
+                item.remove();
+                if (score < 0) endGame();
+            }
+
+            // Kui läheb põhja
+            if (top > window.innerHeight) {
+                clearInterval(fallInterval);
+                item.remove();
+            }
+        }, 20);
+
+        setTimeout(spawnItems, 800 - Math.min(score, 500)); // Mäng läheb kiiremaks
+    }
+
+    function endGame() {
+        gameActive = false;
+        alert("Mäng läbi! Sinu skoor: " + score);
+        startScreen.style.display = 'flex';
+    }
+
+    // Akna suuruse muutuse jälgimine
+    window.addEventListener('resize', () => {
+        containerWidth = container.offsetWidth;
+    });
+
+</script>
+</body>
+</html>
